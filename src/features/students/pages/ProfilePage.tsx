@@ -1,0 +1,303 @@
+import { useEffect, useMemo, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import {
+  CheckCircle2,
+  Loader2,
+  Pencil,
+  RotateCcw,
+  Save,
+  Upload,
+  User,
+  X,
+} from 'lucide-react'
+import { Button } from '@/shared/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
+import { Input } from '@/shared/ui/input'
+import { Label } from '@/shared/ui/label'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/shared/ui/dialog'
+import { useProfileStore } from '../stores/profile-store'
+import type { StudentProfile } from '../types/profile'
+import { cn } from '@/shared/utilities/cn'
+
+const sectionOrder: { key: keyof StudentProfile; title: string }[] = [
+  { key: 'personal', title: 'Personal Information' },
+  { key: 'academic', title: 'Academic Information' },
+  { key: 'parentGuardian', title: 'Parent/Guardian Information' },
+  { key: 'emergency', title: 'Emergency Contact' },
+]
+
+export function ProfilePage() {
+  const profile = useProfileStore((state) => state.profile)
+
+  if (!profile) {
+    return (
+      <div className="flex h-[60vh] flex-col items-center justify-center text-muted-foreground">
+        <User className="mb-3 h-10 w-10" />
+        <p className="text-lg font-medium">Profile not found</p>
+        <p className="text-sm">Complete your registration to create a profile.</p>
+      </div>
+    )
+  }
+
+  return <ProfileEditor profile={profile} />
+}
+
+function ProfileEditor({ profile }: { profile: StudentProfile }) {
+  const updateProfile = useProfileStore((state) => state.updateProfile)
+  const [isEditing, setIsEditing] = useState(false)
+  const [values, setValues] = useState<StudentProfile>(structuredClone(profile))
+  const [passportPreview, setPassportPreview] = useState(profile.personal.passportUrl)
+  const [isSaving, setIsSaving] = useState(false)
+  const [showSuccess, setShowSuccess] = useState(false)
+  const [showDiscardDialog, setShowDiscardDialog] = useState(false)
+
+  useEffect(() => {
+    if (!isEditing) {
+      setValues(structuredClone(profile))
+      setPassportPreview(profile.personal.passportUrl)
+    }
+  }, [profile, isEditing])
+
+  const modifiedFields = useMemo(() => {
+    const fields = new Set<string>()
+    sectionOrder.forEach(({ key }) => {
+      Object.entries(profile[key]).forEach(([field, originalValue]) => {
+        const newValue = values[key][field as keyof StudentProfile[typeof key]]
+        if (String(originalValue) !== String(newValue)) {
+          fields.add(`${String(key)}.${field}`)
+        }
+      })
+    })
+    if (passportPreview !== profile.personal.passportUrl) {
+      fields.add('personal.passportUrl')
+    }
+    return fields
+  }, [profile, values, passportPreview])
+
+  const isDirty = modifiedFields.size > 0
+
+  const setField = <S extends keyof StudentProfile>(
+    section: S,
+    field: keyof StudentProfile[S],
+    value: unknown,
+  ) => {
+    setValues((prev) => ({
+      ...prev,
+      [section]: { ...prev[section], [field]: value },
+    }))
+  }
+
+  const handlePassportChange = (file: File | null) => {
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      alert('Please upload an image file')
+      return
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Image must be smaller than 2MB')
+      return
+    }
+    const reader = new FileReader()
+    reader.onloadend = () => setPassportPreview(reader.result as string)
+    reader.readAsDataURL(file)
+  }
+
+  const handleSave = async () => {
+    setIsSaving(true)
+    await new Promise((resolve) => setTimeout(resolve, 1000))
+    updateProfile({
+      ...values,
+      personal: { ...values.personal, passportUrl: passportPreview },
+    })
+    setIsSaving(false)
+    setIsEditing(false)
+    setShowSuccess(true)
+    setTimeout(() => setShowSuccess(false), 3000)
+  }
+
+  const handleCancel = () => {
+    if (isDirty) {
+      setShowDiscardDialog(true)
+    } else {
+      setIsEditing(false)
+    }
+  }
+
+  const handleReset = () => {
+    setValues(structuredClone(profile))
+    setPassportPreview(profile.personal.passportUrl)
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">My Profile</h1>
+          <p className="text-muted-foreground">View and manage your student information.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          {!isEditing ? (
+            <Button onClick={() => setIsEditing(true)}>
+              <Pencil className="mr-2 h-4 w-4" />
+              Edit Profile
+            </Button>
+          ) : (
+            <>
+              <Button variant="outline" onClick={handleReset} disabled={!isDirty || isSaving}>
+                <RotateCcw className="mr-2 h-4 w-4" />
+                Reset
+              </Button>
+              <Button variant="outline" onClick={handleCancel} disabled={isSaving}>
+                <X className="mr-2 h-4 w-4" />
+                Cancel
+              </Button>
+              <Button onClick={handleSave} disabled={!isDirty || isSaving}>
+                {isSaving ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="mr-2 h-4 w-4" />
+                )}
+                Save Changes
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
+
+      <AnimatePresence>
+        {showSuccess && (
+          <motion.div
+            initial={{ opacity: 0, y: -12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            className="rounded-lg bg-success/10 p-4 text-success"
+          >
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5" />
+              <span className="font-medium">Profile updated successfully.</span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex flex-col items-center gap-6 sm:flex-row">
+            <div className="relative">
+              <div className="h-28 w-28 overflow-hidden rounded-full border-4 border-border bg-muted">
+                {passportPreview ? (
+                  <img src={passportPreview} alt="Profile" className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full items-center justify-center text-muted-foreground">
+                    <User className="h-12 w-12" />
+                  </div>
+                )}
+              </div>
+              {isEditing && (
+                <label className="absolute bottom-0 right-0 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md transition-transform hover:scale-105">
+                  <Upload className="h-4 w-4" />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="sr-only"
+                    onChange={(e) => handlePassportChange(e.target.files?.[0] ?? null)}
+                  />
+                </label>
+              )}
+            </div>
+            <div className="text-center sm:text-left">
+              <h2 className="text-xl font-semibold">{profile.personal.fullName}</h2>
+              <p className="text-muted-foreground">{profile.academic.programme} · {profile.academic.department}</p>
+              <p className="text-sm text-muted-foreground">{profile.personal.email}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-6">
+        {sectionOrder.map(({ key, title }) => (
+          <Card key={key}>
+            <CardHeader>
+              <CardTitle className="text-lg">{title}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {Object.entries(profile[key]).map(([field, originalValue]) => {
+                  if (field === 'passportUrl') return null
+
+                  const fieldKey = `${String(key)}.${field}`
+                  const isModified = modifiedFields.has(fieldKey)
+                  const displayLabel = field.replace(/([A-Z])/g, ' $1').replace(/^./, (c) => c.toUpperCase())
+
+                  if (!isEditing) {
+                    return (
+                      <div key={field} className="rounded-md border border-border p-3">
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground">{displayLabel}</p>
+                        <p className="mt-1 truncate font-medium">{String(originalValue) || '—'}</p>
+                      </div>
+                    )
+                  }
+
+                  return (
+                    <motion.div
+                      key={field}
+                      animate={isModified ? { backgroundColor: 'hsl(var(--warning) / 0.08)' } : {}}
+                      className={cn(
+                        'rounded-md border p-3 transition-colors',
+                        isModified ? 'border-warning' : 'border-border',
+                      )}
+                    >
+                      <Label htmlFor={fieldKey} className="text-xs uppercase tracking-wide text-muted-foreground">
+                        {displayLabel}
+                        {isModified && <span className="ml-2 text-warning">(modified)</span>}
+                      </Label>
+                      <Input
+                        id={fieldKey}
+                        value={String(values[key][field as keyof StudentProfile[typeof key]] ?? '')}
+                        onChange={(e) => setField(key, field as keyof StudentProfile[typeof key], e.target.value)}
+                        className="mt-2 border-0 bg-transparent p-0 shadow-none focus-visible:ring-0"
+                      />
+                    </motion.div>
+                  )
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <Dialog open={showDiscardDialog} onOpenChange={setShowDiscardDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Discard unsaved changes?</DialogTitle>
+            <DialogDescription>
+              You have unsaved changes. Are you sure you want to discard them?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDiscardDialog(false)}>
+              Keep Editing
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                setShowDiscardDialog(false)
+                setIsEditing(false)
+                handleReset()
+              }}
+            >
+              Discard Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
