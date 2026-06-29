@@ -11,20 +11,21 @@ import {
   TableRow,
 } from '@/shared/ui/table'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
-import { courses } from '../data/courses'
+import { useCourses } from '../hooks/use-courses'
 
 export function CoursesPage() {
   const [query, setQuery] = useState('')
+  const { data: coursesData, isLoading, isError } = useCourses()
+  const courses = coursesData?.data ?? []
 
   const filtered = useMemo(() => {
     const q = query.toLowerCase()
     return courses.filter(
       (c) =>
         c.code.toLowerCase().includes(q) ||
-        c.title.toLowerCase().includes(q) ||
-        c.lecturer.toLowerCase().includes(q),
+        c.title.toLowerCase().includes(q),
     )
-  }, [query])
+  }, [query, courses])
 
   return (
     <div className="space-y-6">
@@ -51,51 +52,49 @@ export function CoursesPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Code</TableHead>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Units</TableHead>
-                  <TableHead>Level</TableHead>
-                  <TableHead>Lecturer</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.map((course) => (
-                  <TableRow key={course.id}>
-                    <TableCell className="font-medium">{course.code}</TableCell>
-                    <TableCell>{course.title}</TableCell>
-                    <TableCell>{course.units}</TableCell>
-                    <TableCell>{course.level}</TableCell>
-                    <TableCell>{course.lecturer}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={
-                          course.status === 'registered'
-                            ? 'default'
-                            : course.status === 'completed'
-                              ? 'secondary'
-                              : 'outline'
-                        }
-                      >
-                        {course.status}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {filtered.length === 0 && (
+          {isLoading ? (
+            <div className="flex h-48 items-center justify-center text-muted-foreground">
+              Loading courses...
+            </div>
+          ) : isError ? (
+            <div className="flex h-48 items-center justify-center text-destructive">
+              Failed to load courses.
+            </div>
+          ) : (
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                      No courses found.
-                    </TableCell>
+                    <TableHead>Code</TableHead>
+                    <TableHead>Title</TableHead>
+                    <TableHead>Credits</TableHead>
+                    <TableHead>Level</TableHead>
+                    <TableHead>Department</TableHead>
                   </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {filtered.map((course) => (
+                    <TableRow key={course.id}>
+                      <TableCell className="font-medium">{course.code}</TableCell>
+                      <TableCell>{course.title}</TableCell>
+                      <TableCell>{course.credits}</TableCell>
+                      <TableCell>{course.level ?? '-'}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{course.department?.code ?? '-'}</Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {filtered.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                        No courses found.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

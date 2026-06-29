@@ -28,6 +28,7 @@ import {
 import { useAuthStore } from '@/features/authentication/stores/auth-store'
 import { useRegistrationDraftStore } from '@/features/authentication/stores/registration-draft-store'
 import { useProfileStore } from '@/features/students/stores/profile-store'
+import { useCreateStudentProfile } from '@/features/students/hooks/use-student-profile'
 import type { StudentProfile } from '@/features/students/types/profile'
 import {
   validatePersonal,
@@ -75,7 +76,7 @@ export function RegisterWizard() {
   const [touched, setTouched] = useState<Set<string>>(new Set())
   const [passportFile, setPassportFile] = useState<File | null>(null)
   const [passportPreview, setPassportPreview] = useState<string>(draft.personal?.passportUrl ?? '')
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const createProfile = useCreateStudentProfile()
   const [showSuccess, setShowSuccess] = useState(false)
 
   const profile = useMemo<StudentProfile>(
@@ -118,7 +119,7 @@ export function RegisterWizard() {
   ) => {
     setTouched((prev) => new Set(prev).add(`${String(section)}.${String(field)}`))
     updateDraft({
-      [section]: { [field]: value } as StudentProfile[K],
+      [section]: { [field]: value } as never,
     } as Partial<StudentProfile>)
     setErrors((prev) => {
       const next = { ...prev }
@@ -186,9 +187,30 @@ export function RegisterWizard() {
     const valid = validateStep(step)
     if (!valid) return
 
-    setIsSubmitting(true)
-    await new Promise((resolve) => setTimeout(resolve, 1500))
-    setIsSubmitting(false)
+    try {
+      await createProfile.mutateAsync({
+        firstName: profile.personal.fullName.split(' ')[0],
+        lastName: profile.personal.fullName.split(' ').slice(1).join(' '),
+        gender: profile.personal.gender.toUpperCase(),
+        dateOfBirth: profile.personal.dateOfBirth,
+        nationality: profile.personal.nationality,
+        stateOfOrigin: profile.personal.stateOfOrigin,
+        localGovernment: profile.personal.localGovernment,
+        residentialAddress: profile.personal.residentialAddress,
+        phoneNumber: profile.personal.phone,
+        parentName: profile.parentGuardian.fullName,
+        parentPhoneNumber: profile.parentGuardian.phone,
+        parentEmail: profile.parentGuardian.email,
+        parentAddress: profile.parentGuardian.address,
+        emergencyContactName: profile.emergency.fullName,
+        emergencyContactRelationship: profile.emergency.relationship,
+        emergencyContactPhone: profile.emergency.phone,
+        level: profile.academic.level,
+      })
+    } catch {
+      alert('Registration failed. Please try again.')
+      return
+    }
 
     setProfile(profile)
     completeProfile()
@@ -316,7 +338,7 @@ export function RegisterWizard() {
           )}
 
           <div className="mt-8 flex items-center justify-between">
-            <Button variant="outline" onClick={handleBack} disabled={step === 0 || isSubmitting}>
+            <Button variant="outline" onClick={handleBack} disabled={step === 0 || createProfile.isPending}>
               <ChevronLeft className="mr-2 h-4 w-4" />
               Back
             </Button>
@@ -326,8 +348,8 @@ export function RegisterWizard() {
                 <ChevronRight className="ml-2 h-4 w-4" />
               </Button>
             ) : (
-              <Button onClick={handleSubmit} disabled={isSubmitting}>
-                {isSubmitting ? (
+              <Button onClick={handleSubmit} disabled={createProfile.isPending}>
+                {createProfile.isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Submitting...

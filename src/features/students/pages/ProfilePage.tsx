@@ -22,6 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/shared/ui/dialog'
+import { useStudentProfile, useUpdateStudentProfile } from '../hooks/use-student-profile'
 import { useProfileStore } from '../stores/profile-store'
 import type { StudentProfile } from '../types/profile'
 import { cn } from '@/shared/utilities/cn'
@@ -35,8 +36,57 @@ const sectionOrder: { key: keyof StudentProfile; title: string }[] = [
 
 export function ProfilePage() {
   const profile = useProfileStore((state) => state.profile)
+  const { data: apiProfile, isLoading, isError } = useStudentProfile()
+  const setProfile = useProfileStore((state) => state.setProfile)
 
-  if (!profile) {
+  useEffect(() => {
+    if (apiProfile && !profile) {
+      setProfile({
+        personal: {
+          fullName: `${apiProfile.firstName ?? ''} ${apiProfile.lastName ?? ''}`.trim(),
+          gender: ((apiProfile.gender ?? '').toLowerCase() ?? '') as '' | 'male' | 'female' | 'other',
+          dateOfBirth: apiProfile.dateOfBirth?.split('T')[0] ?? '',
+          nationality: apiProfile.nationality ?? '',
+          stateOfOrigin: apiProfile.stateOfOrigin ?? '',
+          localGovernment: apiProfile.localGovernment ?? '',
+          residentialAddress: apiProfile.residentialAddress ?? '',
+          email: apiProfile.user?.email ?? '',
+          phone: apiProfile.phoneNumber ?? '',
+          passportUrl: '',
+        },
+        parentGuardian: {
+          fullName: apiProfile.parentName ?? '',
+          relationship: '',
+          phone: apiProfile.parentPhoneNumber ?? '',
+          email: apiProfile.parentEmail ?? '',
+          address: apiProfile.parentAddress ?? '',
+        },
+        emergency: {
+          fullName: apiProfile.emergencyContactName ?? '',
+          relationship: apiProfile.emergencyContactRelationship ?? '',
+          phone: apiProfile.emergencyContactPhone ?? '',
+          address: '',
+        },
+        academic: {
+          programme: apiProfile.programme?.name ?? '',
+          faculty: apiProfile.faculty?.name ?? '',
+          department: apiProfile.department?.name ?? '',
+          level: apiProfile.level ?? '',
+        },
+      })
+    }
+  }, [apiProfile, profile, setProfile])
+
+  if (isLoading) {
+    return (
+      <div className="flex h-[60vh] items-center justify-center text-muted-foreground">
+        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+        Loading profile...
+      </div>
+    )
+  }
+
+  if (isError && !profile) {
     return (
       <div className="flex h-[60vh] flex-col items-center justify-center text-muted-foreground">
         <User className="mb-3 h-10 w-10" />
@@ -46,15 +96,17 @@ export function ProfilePage() {
     )
   }
 
+  if (!profile) return null
+
   return <ProfileEditor profile={profile} />
 }
 
 function ProfileEditor({ profile }: { profile: StudentProfile }) {
-  const updateProfile = useProfileStore((state) => state.updateProfile)
+  const updateProfileStore = useProfileStore((state) => state.updateProfile)
+  const updateMutation = useUpdateStudentProfile()
   const [isEditing, setIsEditing] = useState(false)
   const [values, setValues] = useState<StudentProfile>(structuredClone(profile))
   const [passportPreview, setPassportPreview] = useState(profile.personal.passportUrl)
-  const [isSaving, setIsSaving] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
   const [showDiscardDialog, setShowDiscardDialog] = useState(false)
 
@@ -110,16 +162,36 @@ function ProfileEditor({ profile }: { profile: StudentProfile }) {
   }
 
   const handleSave = async () => {
-    setIsSaving(true)
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    updateProfile({
-      ...values,
-      personal: { ...values.personal, passportUrl: passportPreview },
-    })
-    setIsSaving(false)
-    setIsEditing(false)
-    setShowSuccess(true)
-    setTimeout(() => setShowSuccess(false), 3000)
+    try {
+      await updateMutation.mutateAsync({
+        firstName: values.personal.fullName.split(' ')[0],
+        lastName: values.personal.fullName.split(' ').slice(1).join(' '),
+        gender: values.personal.gender.toUpperCase(),
+        dateOfBirth: values.personal.dateOfBirth,
+        nationality: values.personal.nationality,
+        stateOfOrigin: values.personal.stateOfOrigin,
+        localGovernment: values.personal.localGovernment,
+        residentialAddress: values.personal.residentialAddress,
+        phoneNumber: values.personal.phone,
+        parentName: values.parentGuardian.fullName,
+        parentPhoneNumber: values.parentGuardian.phone,
+        parentEmail: values.parentGuardian.email,
+        parentAddress: values.parentGuardian.address,
+        emergencyContactName: values.emergency.fullName,
+        emergencyContactRelationship: values.emergency.relationship,
+        emergencyContactPhone: values.emergency.phone,
+        level: values.academic.level,
+      })
+      updateProfileStore({
+        ...values,
+        personal: { ...values.personal, passportUrl: passportPreview },
+      })
+      setIsEditing(false)
+      setShowSuccess(true)
+      setTimeout(() => setShowSuccess(false), 3000)
+    } catch {
+      alert('Failed to save profile. Please try again.')
+    }
   }
 
   const handleCancel = () => {
@@ -150,16 +222,16 @@ function ProfileEditor({ profile }: { profile: StudentProfile }) {
             </Button>
           ) : (
             <>
-              <Button variant="outline" onClick={handleReset} disabled={!isDirty || isSaving}>
+              <Button variant="outline" onClick={handleReset} disabled={!isDirty || updateMutation.isPending}>
                 <RotateCcw className="mr-2 h-4 w-4" />
                 Reset
               </Button>
-              <Button variant="outline" onClick={handleCancel} disabled={isSaving}>
+              <Button variant="outline" onClick={handleCancel} disabled={updateMutation.isPending}>
                 <X className="mr-2 h-4 w-4" />
                 Cancel
               </Button>
-              <Button onClick={handleSave} disabled={!isDirty || isSaving}>
-                {isSaving ? (
+              <Button onClick={handleSave} disabled={!isDirty || updateMutation.isPending}>
+                {updateMutation.isPending ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
                   <Save className="mr-2 h-4 w-4" />

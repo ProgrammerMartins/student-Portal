@@ -5,8 +5,21 @@ import { Navbar } from '@/shared/components/navigation/Navbar'
 import { Breadcrumbs } from '@/shared/components/navigation/Breadcrumbs'
 import { SkipLink } from '@/shared/components/navigation/SkipLink'
 import { PageTransition } from '@/shared/components/transitions/PageTransition'
+import type { User } from '@/shared/types'
 import { useAuth } from '@/features/authentication/hooks/use-auth'
 import { cn } from '@/shared/utilities/cn'
+
+function toUserView(stored: { id: string; email: string; firstName: string; lastName: string; role: string; profileComplete: boolean }): User {
+  return {
+    ...stored,
+    role: stored.role as User['role'],
+  }
+}
+
+function toSidebarRole(role: string): 'student' | 'admin' {
+  if (role === 'STUDENT' || role === 'student') return 'student'
+  return 'admin'
+}
 
 export function RootLayout() {
   const { user } = useAuth()
@@ -22,8 +35,8 @@ export function RootLayout() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <SkipLink />
-      <Sidebar role={user.role} collapsed={collapsed} onToggle={() => setCollapsed((prev) => !prev)} />
-      <Navbar user={user} />
+      <Sidebar role={toSidebarRole(user.role)} collapsed={collapsed} onToggle={() => setCollapsed((prev) => !prev)} />
+      <Navbar user={toUserView(user)} />
       <div
         className={cn(
           'pt-16 transition-all duration-slow ease-out-expo',

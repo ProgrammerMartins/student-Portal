@@ -14,28 +14,16 @@ import {
   Calendar,
   CalendarDays,
   CheckCircle2,
-  Clock,
   CreditCard,
   FileText,
   GraduationCap,
-  MapPin,
-  TrendingDown,
-  TrendingUp,
+  Loader2,
 } from 'lucide-react'
 import { Button } from '@/shared/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/ui/card'
-import { Progress } from '@/shared/ui/progress'
 import { Badge } from '@/shared/ui/badge'
 import { useAuth } from '@/features/authentication/hooks/use-auth'
-import {
-  activityTimeline,
-  announcements,
-  gpaHistory,
-  registrationProgress,
-  studentStats,
-  timetablePreview,
-  upcomingAssessments,
-} from '../data/demo-data'
+import { useStudentDashboard } from '../hooks/use-dashboard'
 import { format } from 'date-fns'
 
 const container = {
@@ -53,9 +41,28 @@ const item = {
 
 export function StudentDashboard() {
   const { user } = useAuth()
+  const { data: dashboard, isLoading, isError } = useStudentDashboard()
   const today = useMemo(() => new Date(), [])
 
   if (!user) return null
+
+  if (isLoading) {
+    return (
+      <div className="flex h-[60vh] items-center justify-center text-muted-foreground">
+        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+        Loading dashboard...
+      </div>
+    )
+  }
+
+  if (isError || !dashboard) {
+    return (
+      <div className="flex h-[60vh] flex-col items-center justify-center text-muted-foreground">
+        <p className="text-lg font-medium">Could not load dashboard data</p>
+        <p className="text-sm">Please try again later.</p>
+      </div>
+    )
+  }
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
@@ -64,37 +71,51 @@ export function StudentDashboard() {
           Welcome back, {user.firstName}
         </h1>
         <p className="text-muted-foreground">
-          Here's what's happening with your academic journey today.
+          {dashboard.currentSemester
+            ? `${dashboard.student.programme ?? ''} · ${dashboard.currentSemester.name} ${dashboard.currentSemester.session}`
+            : "Here's what's happening with your academic journey today."}
         </p>
       </motion.div>
 
       <motion.div variants={item} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {studentStats.map((stat) => (
-          <Card key={stat.label}>
-            <CardContent className="p-5">
-              <p className="text-sm text-muted-foreground">{stat.label}</p>
-              <div className="mt-2 flex items-end justify-between">
-                <span className="text-3xl font-semibold tracking-tight">{stat.value}</span>
-                <span
-                  className={`flex items-center text-xs font-medium ${
-                    stat.trend === 'up'
-                      ? 'text-success'
-                      : stat.trend === 'down'
-                        ? 'text-destructive'
-                        : 'text-muted-foreground'
-                  }`}
-                >
-                  {stat.trend === 'up' ? (
-                    <TrendingUp className="mr-1 h-3 w-3" />
-                  ) : stat.trend === 'down' ? (
-                    <TrendingDown className="mr-1 h-3 w-3" />
-                  ) : null}
-                  {stat.change}
+        <Card>
+          <CardContent className="p-5">
+            <p className="text-sm text-muted-foreground">Level</p>
+            <div className="mt-2 flex items-end justify-between">
+              <span className="text-3xl font-semibold tracking-tight">{dashboard.student.level ?? '—'}</span>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-5">
+            <p className="text-sm text-muted-foreground">Matric Number</p>
+            <div className="mt-2 flex items-end justify-between">
+              <span className="text-lg font-semibold tracking-tight">{dashboard.student.matricNumber ?? '—'}</span>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-5">
+            <p className="text-sm text-muted-foreground">Programme</p>
+            <div className="mt-2 flex items-end justify-between">
+              <span className="text-lg font-semibold tracking-tight">{dashboard.student.programme ?? '—'}</span>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-5">
+            <p className="text-sm text-muted-foreground">Registered Courses</p>
+            <div className="mt-2 flex items-end justify-between">
+              <span className="text-3xl font-semibold tracking-tight">{dashboard.registration.courseCount}</span>
+              {dashboard.registration.isApproved && (
+                <span className="flex items-center text-xs font-medium text-success">
+                  <CheckCircle2 className="mr-1 h-3 w-3" />
+                  Approved
                 </span>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+              )}
+            </div>
+          </CardContent>
+        </Card>
       </motion.div>
 
       <div className="grid gap-6 xl:grid-cols-3">
@@ -102,53 +123,54 @@ export function StudentDashboard() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
-                <CardTitle>GPA / CGPA Trend</CardTitle>
-                <CardDescription>Academic performance over the last 5 semesters</CardDescription>
+                <CardTitle>Recent Results</CardTitle>
+                <CardDescription>Latest academic performance</CardDescription>
               </div>
-              <Badge variant="secondary">
-                <GraduationCap className="mr-1 h-3 w-3" />
-                CGPA 3.64
-              </Badge>
+              {dashboard.recentResults.length > 0 && (
+                <Badge variant="secondary">
+                  <GraduationCap className="mr-1 h-3 w-3" />
+                  {dashboard.recentResults.length} results
+                </Badge>
+              )}
             </CardHeader>
             <CardContent>
-              <div className="h-[300px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={gpaHistory} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="gpaGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="var(--primary)" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                    <XAxis dataKey="semester" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
-                    <YAxis domain={[0, 4]} tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
-                    <RechartsTooltip
-                      contentStyle={{
-                        backgroundColor: 'hsl(var(--card))',
-                        borderColor: 'hsl(var(--border))',
-                        borderRadius: 'var(--radius-md)',
-                      }}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="gpa"
-                      stroke="var(--primary)"
-                      strokeWidth={2}
-                      fill="url(#gpaGradient)"
-                      name="GPA"
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="cgpa"
-                      stroke="var(--info)"
-                      strokeWidth={2}
-                      fill="transparent"
-                      name="CGPA"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
+              {dashboard.recentResults.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No results published yet.</p>
+              ) : (
+                <div className="h-[300px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart
+                      data={dashboard.recentResults.map((r) => ({ name: r.course.code, score: r.score ?? 0 }))}
+                      margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                    >
+                      <defs>
+                        <linearGradient id="gpaGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="var(--primary)" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                      <XAxis dataKey="name" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
+                      <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
+                      <RechartsTooltip
+                        contentStyle={{
+                          backgroundColor: 'hsl(var(--card))',
+                          borderColor: 'hsl(var(--border))',
+                          borderRadius: 'var(--radius-md)',
+                        }}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="score"
+                        stroke="var(--primary)"
+                        strokeWidth={2}
+                        fill="url(#gpaGradient)"
+                        name="Score"
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
             </CardContent>
           </Card>
         </motion.div>
@@ -156,32 +178,42 @@ export function StudentDashboard() {
         <motion.div variants={item}>
           <Card className="h-full">
             <CardHeader>
-              <CardTitle>Registration Progress</CardTitle>
+              <CardTitle>Registration Status</CardTitle>
               <CardDescription>
-                {registrationProgress.completed} of {registrationProgress.total} steps completed
+                {dashboard.registration.isRegistered
+                  ? `${dashboard.registration.courseCount} course(s) registered`
+                  : 'Not yet registered'}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
-              <Progress value={(registrationProgress.completed / registrationProgress.total) * 100} />
-              <ul className="space-y-3">
-                {registrationProgress.steps.map((step, index) => {
-                  const completed = index < registrationProgress.completed
-                  return (
-                    <li key={step} className="flex items-center gap-3 text-sm">
-                      <div
-                        className={`flex h-6 w-6 items-center justify-center rounded-full ${
-                          completed ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
-                        }`}
-                      >
-                        {completed ? <CheckCircle2 className="h-4 w-4" /> : <span className="text-xs">{index + 1}</span>}
-                      </div>
-                      <span className={completed ? 'text-foreground' : 'text-muted-foreground'}>{step}</span>
-                    </li>
-                  )
-                })}
-              </ul>
+              {dashboard.registration.isRegistered ? (
+                <ul className="space-y-3">
+                  <li className="flex items-center gap-3 text-sm">
+                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                      <CheckCircle2 className="h-4 w-4" />
+                    </div>
+                    <span>Profile Complete</span>
+                  </li>
+                  <li className="flex items-center gap-3 text-sm">
+                    <div className={`flex h-6 w-6 items-center justify-center rounded-full ${dashboard.registration.isRegistered ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
+                      <span className="text-xs">2</span>
+                    </div>
+                    <span>Course Registration</span>
+                  </li>
+                  <li className="flex items-center gap-3 text-sm">
+                    <div className={`flex h-6 w-6 items-center justify-center rounded-full ${dashboard.registration.isApproved ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
+                      <span className="text-xs">3</span>
+                    </div>
+                    <span>Advisor Approval {dashboard.registration.isApproved ? '(Approved)' : '(Pending)'}</span>
+                  </li>
+                </ul>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Complete your registration to get started with course registration.
+                </p>
+              )}
               <Button variant="outline" className="w-full">
-                Continue Registration
+                {dashboard.registration.isRegistered ? 'View Courses' : 'Start Registration'}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </CardContent>
@@ -193,28 +225,32 @@ export function StudentDashboard() {
         <motion.div variants={item}>
           <Card className="h-full">
             <CardHeader>
-              <CardTitle>Today's Timetable</CardTitle>
-              <CardDescription>{format(today, 'EEEE, MMMM do')}</CardDescription>
+              <CardTitle>Current Semester</CardTitle>
+              <CardDescription>{today ? format(today, 'EEEE, MMMM do') : ''}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {timetablePreview.map((entry) => (
-                <div key={entry.id} className="flex items-start gap-3">
-                  <div className={`mt-1 h-2 w-2 rounded-full ${entry.color}`} />
-                  <div className="flex-1">
-                    <p className="font-medium">{entry.course}</p>
-                    <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        {entry.time}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <MapPin className="h-3 w-3" />
-                        {entry.venue}
-                      </span>
+              {dashboard.currentSemester ? (
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="mt-1 h-2 w-2 rounded-full bg-primary" />
+                    <div className="flex-1">
+                      <p className="font-medium">{dashboard.currentSemester.name}</p>
+                      <p className="text-xs text-muted-foreground">{dashboard.currentSemester.session}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="mt-1 h-2 w-2 rounded-full bg-info" />
+                    <div className="flex-1">
+                      <p className="font-medium">Period</p>
+                      <p className="text-xs text-muted-foreground">
+                        {format(new Date(dashboard.currentSemester.startDate), 'MMM d')} — {format(new Date(dashboard.currentSemester.endDate), 'MMM d, yyyy')}
+                      </p>
                     </div>
                   </div>
                 </div>
-              ))}
+              ) : (
+                <p className="text-sm text-muted-foreground">No active semester.</p>
+              )}
             </CardContent>
           </Card>
         </motion.div>
@@ -222,104 +258,53 @@ export function StudentDashboard() {
         <motion.div variants={item}>
           <Card className="h-full">
             <CardHeader>
-              <CardTitle>Upcoming Assessments</CardTitle>
-              <CardDescription>Next 14 days</CardDescription>
+              <CardTitle>Notifications</CardTitle>
+              <CardDescription>
+                {dashboard.unreadNotifications > 0
+                  ? `${dashboard.unreadNotifications} unread`
+                  : 'All caught up'}
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {upcomingAssessments.map((assessment) => (
-                <div key={assessment.id} className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="font-medium">{assessment.title}</p>
-                    <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-                      <MapPin className="h-3 w-3" />
-                      {assessment.location}
-                    </p>
+              {dashboard.notifications.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No notifications.</p>
+              ) : (
+                dashboard.notifications.map((n) => (
+                  <div key={n.id} className="flex items-start gap-3">
+                    <div className={`mt-1 h-2 w-2 shrink-0 rounded-full ${n.isRead ? 'bg-muted' : 'bg-primary'}`} />
+                    <div>
+                      <p className="text-sm font-medium">{n.title}</p>
+                      <p className="text-xs text-muted-foreground">{format(new Date(n.createdAt), 'MMM d, h:mm a')}</p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <Badge variant="outline">{assessment.type}</Badge>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {format(new Date(assessment.date), 'MMM d')}
-                    </p>
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </CardContent>
           </Card>
         </motion.div>
 
         <motion.div variants={item}>
           <Card className="h-full">
-            <CardHeader>
-              <CardTitle>Announcements</CardTitle>
-              <CardDescription>Latest university updates</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {announcements.map((announcement) => (
-                <div key={announcement.id} className="group cursor-pointer">
-                  <div className="flex items-center justify-between">
-                    <p className="font-medium group-hover:text-primary">{announcement.title}</p>
-                    <Badge variant="secondary" className="text-xs">
-                      {announcement.category}
-                    </Badge>
-                  </div>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {format(new Date(announcement.date), 'MMM d, yyyy')}
-                  </p>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
-
-      <div className="grid gap-6 xl:grid-cols-3">
-        <motion.div variants={item} className="xl:col-span-2">
-          <Card>
             <CardHeader>
               <CardTitle>Quick Actions</CardTitle>
             </CardHeader>
-            <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <Button variant="outline" className="h-auto flex-col gap-2 py-4">
+            <CardContent className="space-y-3">
+              <Button variant="outline" className="w-full justify-start gap-3">
                 <FileText className="h-5 w-5" />
-                <span className="text-xs">Course Registration</span>
+                Course Registration
               </Button>
-              <Button variant="outline" className="h-auto flex-col gap-2 py-4">
+              <Button variant="outline" className="w-full justify-start gap-3">
                 <CreditCard className="h-5 w-5" />
-                <span className="text-xs">Pay Fees</span>
+                Pay Fees
               </Button>
-              <Button variant="outline" className="h-auto flex-col gap-2 py-4">
+              <Button variant="outline" className="w-full justify-start gap-3">
                 <CalendarDays className="h-5 w-5" />
-                <span className="text-xs">View Timetable</span>
+                View Timetable
               </Button>
-              <Button variant="outline" className="h-auto flex-col gap-2 py-4">
+              <Button variant="outline" className="w-full justify-start gap-3">
                 <Calendar className="h-5 w-5" />
-                <span className="text-xs">Academic Calendar</span>
+                Academic Calendar
               </Button>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div variants={item}>
-          <Card className="h-full">
-            <CardHeader>
-              <CardTitle>Activity Timeline</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {activityTimeline.map((event) => (
-                <div key={event.id} className="flex gap-3">
-                  <div
-                    className={`mt-1 h-2 w-2 shrink-0 rounded-full ${
-                      event.status === 'completed' ? 'bg-success' : 'bg-warning'
-                    }`}
-                  />
-                  <div>
-                    <p className="text-sm font-medium">{event.title}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {format(new Date(event.timestamp), 'MMM d, h:mm a')}
-                    </p>
-                  </div>
-                </div>
-              ))}
             </CardContent>
           </Card>
         </motion.div>

@@ -1,15 +1,23 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { User } from '@/shared/types'
+
+export interface StoredUser {
+  id: string
+  email: string
+  firstName: string
+  lastName: string
+  role: string
+  profileComplete: boolean
+}
 
 interface AuthStore {
-  user: User | null
+  user: StoredUser | null
   accessToken: string | null
   refreshToken: string | null
   isAuthenticated: boolean
-  setAuth: (user: User, accessToken: string, refreshToken: string) => void
+  setAuth: (user: StoredUser, accessToken: string, refreshToken: string) => void
   completeProfile: () => void
-  updateUser: (updates: Partial<User>) => void
+  updateUser: (updates: Partial<StoredUser>) => void
   clearAuth: () => void
 }
 

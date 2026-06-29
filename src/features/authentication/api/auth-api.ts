@@ -1,50 +1,57 @@
-import { API_TOKEN_KEY } from '@/shared/services/api-client'
-import type { LoginCredentials, AuthResponse } from '../types/auth'
+import { apiClient, API_TOKEN_KEY } from '@/shared/services/api-client'
+import type { LoginCredentials } from '../types/auth'
 
-// Stub implementation — the API call shape is preserved for Phase 10 migration.
-export async function login(credentials: LoginCredentials): Promise<AuthResponse> {
-  // TODO: replace with `const { data } = await apiClient.post<AuthResponse>('/auth/login', credentials)`
-  await new Promise((resolve) => setTimeout(resolve, 1200))
-
-  let response: AuthResponse
-
-  if (credentials.email === 'admin@university.edu' && credentials.password === 'password') {
-    response = {
-      user: {
-        id: 'admin-1',
-        email: credentials.email,
-        firstName: 'Admin',
-        lastName: 'User',
-        role: 'admin',
-        profileComplete: true,
-      },
-      accessToken: 'mock-admin-token',
-      refreshToken: 'mock-admin-refresh',
-    }
-  } else if (credentials.email === 'student@university.edu' && credentials.password === 'password') {
-    // For demo purposes: treat the student as already registered if a profile exists in storage.
-    const storedProfile = localStorage.getItem('portal-profile')
-    const hasProfile = storedProfile ? JSON.parse(storedProfile).profile != null : false
-    response = {
-      user: {
-        id: 'student-1',
-        email: credentials.email,
-        firstName: 'Alex',
-        lastName: 'Johnson',
-        role: 'student',
-        profileComplete: hasProfile,
-      },
-      accessToken: 'mock-student-token',
-      refreshToken: 'mock-student-refresh',
-    }
-  } else {
-    throw new Error('Invalid email or password. Try student@university.edu / password')
+interface BackendLoginResponse {
+  user: {
+    id: string
+    email: string
+    firstName: string
+    lastName: string
+    role: string
   }
-
-  localStorage.setItem(API_TOKEN_KEY, response.accessToken)
-  return response
+  accessToken: string
+  refreshToken: string
 }
 
-export function logout() {
-  localStorage.removeItem(API_TOKEN_KEY)
+export interface AuthResult {
+  user: {
+    id: string
+    email: string
+    firstName: string
+    lastName: string
+    role: string
+    profileComplete?: boolean
+  }
+  accessToken: string
+  refreshToken: string
+}
+
+export async function login(credentials: LoginCredentials): Promise<AuthResult> {
+  const { data } = await apiClient.post<BackendLoginResponse>('/auth/login', credentials)
+  const result: AuthResult = {
+    user: {
+      id: data.user.id,
+      email: data.user.email,
+      firstName: data.user.firstName,
+      lastName: data.user.lastName,
+      role: data.user.role,
+    },
+    accessToken: data.accessToken,
+    refreshToken: data.refreshToken,
+  }
+  localStorage.setItem(API_TOKEN_KEY, result.accessToken)
+  return result
+}
+
+export async function logout() {
+  try {
+    await apiClient.post('/auth/logout')
+  } finally {
+    localStorage.removeItem(API_TOKEN_KEY)
+  }
+}
+
+export async function getProfile() {
+  const { data } = await apiClient.get('/auth/profile')
+  return data
 }

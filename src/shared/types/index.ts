@@ -3,7 +3,7 @@ export interface User {
   email: string
   firstName: string
   lastName: string
-  role: 'student' | 'admin'
+  role: 'STUDENT' | 'ADMIN' | 'SUPER_ADMIN' | 'LECTURER'
   avatarUrl?: string
   profileComplete: boolean
 }
@@ -11,4 +11,18 @@ export interface User {
 export interface ApiError {
   message: string
   statusCode: number
+}
+
+export interface PaginatedMeta {
+  total: number
+  page: number
+  limit: number
+  totalPages: number
+  hasNextPage: boolean
+  hasPreviousPage: boolean
+}
+
+export interface PaginatedResult<T> {
+  data: T[]
+  meta: PaginatedMeta
 }

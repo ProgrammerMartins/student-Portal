@@ -21,6 +21,11 @@ interface NavbarProps {
   user: UserType
 }
 
+function toSidebarRole(role: string): 'student' | 'admin' {
+  if (role === 'STUDENT' || role === 'student') return 'student'
+  return 'admin'
+}
+
 export function Navbar({ user }: NavbarProps) {
   const navigate = useNavigate()
   const { resolvedTheme, toggle } = useTheme()
@@ -30,7 +35,7 @@ export function Navbar({ user }: NavbarProps) {
     <header className="fixed left-0 right-0 top-0 z-20 h-16 border-b border-border bg-card/80 backdrop-blur-md md:left-[260px]">
       <div className="flex h-full items-center justify-between gap-4 px-4 md:px-6">
         <div className="flex items-center gap-3">
-          <MobileNav role={user.role} />
+          <MobileNav role={toSidebarRole(user.role)} />
           <div className="relative hidden sm:block">
             <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
