@@ -52,3 +52,30 @@ export async function fetchProfileCompletion() {
   const { data } = await apiClient.get('/students/profile/completion')
   return data
 }
+
+import type { PaginatedResult } from '@/shared/types'
+
+export async function fetchAllStudents(params?: { page?: number; limit?: number; search?: string }) {
+  const { data } = await apiClient.get<PaginatedResult<BackendStudentProfile>>('/students', { params })
+  return data
+}
+
+export async function approveStudent(id: string) {
+  const { data } = await apiClient.post<{ message: string }>(`/students/${id}/approve`)
+  return data
+}
+
+export async function rejectStudent(id: string) {
+  const { data } = await apiClient.post<{ message: string }>(`/students/${id}/reject`)
+  return data
+}
+
+export async function suspendStudent(userId: string) {
+  const { data } = await apiClient.post<{ message: string }>(`/students/${userId}/suspend`)
+  return data
+}
+
+export async function reactivateStudent(userId: string) {
+  const { data } = await apiClient.post<{ message: string }>(`/students/${userId}/reactivate`)
+  return data
+}

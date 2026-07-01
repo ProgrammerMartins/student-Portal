@@ -13,11 +13,16 @@ export function useLogin() {
       let profileComplete = true
 
       if (response.user.role === 'STUDENT') {
-        try {
-          const profile = await getProfile()
-          profileComplete = (profile as { student?: { isProfileComplete: boolean } })?.student?.isProfileComplete ?? false
-        } catch {
-          profileComplete = false
+        const storedUser = useAuthStore.getState().user
+        if (storedUser?.profileComplete) {
+          profileComplete = true
+        } else {
+          try {
+            const profile = await getProfile()
+            profileComplete = (profile as { student?: { isProfileComplete: boolean } })?.student?.isProfileComplete ?? false
+          } catch {
+            profileComplete = false
+          }
         }
       }
 
@@ -33,7 +38,7 @@ export function useLogin() {
           email: data.user.email,
           firstName: data.user.firstName,
           lastName: data.user.lastName,
-          role: data.user.role,
+          role: data.user.role.toLowerCase(),
           profileComplete: data.user.profileComplete ?? false,
         },
         data.accessToken,
@@ -44,7 +49,7 @@ export function useLogin() {
       if (isStudent && !data.user.profileComplete) {
         navigate('/register', { replace: true })
       } else {
-        navigate('/dashboard', { replace: true })
+        navigate('/portal/dashboard', { replace: true })
       }
     },
   })

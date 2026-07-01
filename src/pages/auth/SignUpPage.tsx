@@ -5,21 +5,22 @@ import { Eye, EyeOff, GraduationCap, Loader2 } from 'lucide-react'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
-import { Checkbox } from '@/shared/ui/checkbox'
-import { useLogin } from '@/features/authentication/hooks/use-login'
+import { useRegister } from '@/features/authentication/hooks/use-register'
 import { useAuthStore } from '@/features/authentication/stores/auth-store'
 import { ApiError } from '@/shared/services/api-client'
 
-export function LoginPage() {
+export function SignUpPage() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
-  const [email, setEmail] = useState('student@university.edu')
-  const [password, setPassword] = useState('password')
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const login = useLogin()
+  const registerMutation = useRegister()
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault()
-    login.mutate({ email, password })
+    registerMutation.mutate({ email, password, firstName, lastName })
   }
 
   if (isAuthenticated) {
@@ -37,14 +38,14 @@ export function LoginPage() {
         </div>
         <div className="max-w-md">
           <h2 className="text-3xl font-semibold leading-tight">
-            Your academic journey, simplified.
+            Begin your academic journey.
           </h2>
           <p className="mt-4 text-primary-foreground/80">
-            Access courses, results, registrations, payments, and announcements in one secure place.
+            Create your account and complete your profile to access all university services.
           </p>
         </div>
         <p className="text-sm text-primary-foreground/70">
-          © {new Date().getFullYear()} University of Technology. All rights reserved.
+          &copy; {new Date().getFullYear()} University of Technology. All rights reserved.
         </p>
       </div>
 
@@ -61,12 +62,35 @@ export function LoginPage() {
             </div>
           </div>
 
-          <h1 className="text-2xl font-semibold tracking-tight">Welcome back</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Create account</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Enter your credentials to access your account.
+            Sign up to get started with your student portal.
           </p>
 
           <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="firstName">First name</Label>
+                <Input
+                  id="firstName"
+                  required
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  placeholder="John"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="lastName">Last name</Label>
+                <Input
+                  id="lastName"
+                  required
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  placeholder="Doe"
+                />
+              </div>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="email">Email address</Label>
               <Input
@@ -86,11 +110,11 @@ export function LoginPage() {
                 <Input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
-                  autoComplete="current-password"
+                  autoComplete="new-password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
+                  placeholder="Min. 8 characters"
                   className="pr-10"
                 />
                 <button
@@ -104,42 +128,33 @@ export function LoginPage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Checkbox id="remember" />
-                <Label htmlFor="remember" className="text-sm font-normal">
-                  Remember me
-                </Label>
-              </div>
-              <a href="#" className="text-sm font-medium text-primary hover:underline">
-                Forgot password?
-              </a>
-            </div>
-
-            {login.isError && (
+            {registerMutation.isError && (
               <p className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-                {login.error instanceof ApiError
-                  ? `(${login.error.statusCode}) ${login.error.message}`
-                  : login.error instanceof Error
-                    ? login.error.message
-                    : 'Login failed'}
+                {registerMutation.error instanceof ApiError
+                  ? `(${registerMutation.error.statusCode}) ${registerMutation.error.message}`
+                  : registerMutation.error instanceof Error
+                    ? registerMutation.error.message
+                    : 'Registration failed'}
               </p>
             )}
 
-            <Button type="submit" className="w-full" disabled={login.isPending}>
-              {login.isPending ? (
+            <Button type="submit" className="w-full" disabled={registerMutation.isPending}>
+              {registerMutation.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Signing in...
+                  Creating account...
                 </>
               ) : (
-                'Sign in'
+                'Create account'
               )}
             </Button>
           </form>
 
-          <p className="mt-6 text-center text-xs text-muted-foreground">
-            Demo: <span className="font-medium text-foreground">student@university.edu / password</span>
+          <p className="mt-6 text-center text-sm text-muted-foreground">
+            Already have an account?{' '}
+            <Link to="/login" className="font-medium text-primary hover:underline">
+              Sign in
+            </Link>
           </p>
         </motion.div>
       </div>

@@ -9,8 +9,36 @@ export interface ApiResponse<T> {
   timestamp?: string
 }
 
+export interface BackendErrorResponse {
+  success: false
+  statusCode: number
+  message: string | string[]
+  error?: string
+  timestamp: string
+  path: string
+}
+
+export class ApiError extends Error {
+  public statusCode: number
+  public errorType: string | undefined
+  public timestamp: string | undefined
+  public path: string | undefined
+
+  constructor(backendError: BackendErrorResponse) {
+    const message = Array.isArray(backendError.message)
+      ? backendError.message.join('; ')
+      : backendError.message
+    super(message)
+    this.name = 'ApiError'
+    this.statusCode = backendError.statusCode
+    this.errorType = backendError.error
+    this.timestamp = backendError.timestamp
+    this.path = backendError.path
+  }
+}
+
 const rawClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000/api/vv1',
+  baseURL: import.meta.env.VITE_API_BASE_URL ?? '/api/v1',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -36,16 +64,21 @@ rawClient.interceptors.response.use(
     return response as AxiosResponse<unknown>
   },
   async (error) => {
-    const status = error.response?.status
+    if (error.response?.data) {
+      const body = error.response.data as BackendErrorResponse
+      if (body.statusCode) {
+        const apiError = new ApiError(body)
 
-    if (status === 401) {
-      localStorage.removeItem(API_TOKEN_KEY)
-      window.location.href = '/login'
-      return Promise.reject(error)
-    }
+        if (apiError.statusCode === 401 && window.location.pathname !== '/login') {
+          import('@/features/authentication/stores/auth-store').then(({ useAuthStore }) => {
+            useAuthStore.getState().clearAuth()
+            localStorage.removeItem(API_TOKEN_KEY)
+            window.location.href = '/login'
+          })
+        }
 
-    if (status >= 500) {
-      // TODO: surface generic server error toast.
+        return Promise.reject(apiError)
+      }
     }
 
     return Promise.reject(error)

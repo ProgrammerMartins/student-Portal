@@ -14,9 +14,11 @@ export function DashboardPage() {
 
   if (!user) return null
 
+  const isAdmin = user.role === 'admin' || user.role === 'super_admin'
+
   return (
     <Suspense fallback={<PageLoader />}>
-      {user.role === 'admin' ? <AdminDashboard /> : <StudentDashboard />}
+      {isAdmin ? <AdminDashboard /> : <StudentDashboard />}
     </Suspense>
   )
 }

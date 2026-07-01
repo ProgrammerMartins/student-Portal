@@ -9,7 +9,7 @@ export function RegistrationGate() {
   }
 
   if (user.role === 'admin' || user.profileComplete) {
-    return <Navigate to="/dashboard" replace />
+    return <Navigate to="/portal/dashboard" replace />
   }
 
   return <Outlet />

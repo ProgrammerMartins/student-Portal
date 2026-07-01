@@ -1,6 +1,7 @@
 export interface PersonalInfo {
   passportUrl?: string
   fullName: string
+  matricNumber?: string
   gender: 'male' | 'female' | 'other' | ''
   dateOfBirth: string
   nationality: string

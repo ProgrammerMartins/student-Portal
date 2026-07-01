@@ -7,6 +7,7 @@ export function useStudentProfile() {
     queryKey: ['student-profile'],
     queryFn: fetchStudentProfile,
     retry: false,
+    staleTime: 5 * 60 * 1000,
   })
 }
 

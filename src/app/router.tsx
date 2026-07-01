@@ -2,8 +2,10 @@ import { Suspense, lazy } from 'react'
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { RootLayout } from '@/layouts/RootLayout'
 import { LoginPage } from '@/pages/auth/LoginPage'
+import { SignUpPage } from '@/pages/auth/SignUpPage'
 import { DashboardPage } from '@/pages/dashboard/DashboardPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
+import { LandingPage } from '@/pages/LandingPage'
 import { RegisterPage } from '@/features/authentication/pages/RegisterPage'
 import { PageLoader } from '@/shared/components/loading/PageLoader'
 import { RequireAuth } from './guards/RequireAuth'
@@ -54,10 +56,21 @@ function withSuspense(Component: React.ComponentType) {
 
 export const router = createBrowserRouter(
   [
+    // ─── Public landing page ───────────────────────────────────────────────
+    {
+      path: '/',
+      element: <LandingPage />,
+    },
+    // ─── Auth pages ────────────────────────────────────────────────────────
     {
       path: '/login',
       element: <LoginPage />,
     },
+    {
+      path: '/signup',
+      element: <SignUpPage />,
+    },
+    // ─── Protected portal routes ───────────────────────────────────────────
     {
       element: <RequireAuth />,
       children: [
@@ -69,10 +82,10 @@ export const router = createBrowserRouter(
           element: <RequireProfile />,
           children: [
             {
-              path: '/',
+              path: '/portal',
               element: <RootLayout />,
               children: [
-                { index: true, element: <Navigate to="/dashboard" replace /> },
+                { index: true, element: <Navigate to="/portal/dashboard" replace /> },
                 { path: 'dashboard', element: <DashboardPage /> },
                 { path: 'courses', element: withSuspense(CoursesPage) },
                 { path: 'results', element: withSuspense(ResultsPage) },
@@ -103,3 +116,4 @@ export const router = createBrowserRouter(
     },
   },
 )
+

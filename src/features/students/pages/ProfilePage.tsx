@@ -44,6 +44,7 @@ export function ProfilePage() {
       setProfile({
         personal: {
           fullName: `${apiProfile.firstName ?? ''} ${apiProfile.lastName ?? ''}`.trim(),
+          matricNumber: apiProfile.matricNumber ?? undefined,
           gender: ((apiProfile.gender ?? '').toLowerCase() ?? '') as '' | 'male' | 'female' | 'other',
           dateOfBirth: apiProfile.dateOfBirth?.split('T')[0] ?? '',
           nationality: apiProfile.nationality ?? '',
@@ -96,7 +97,7 @@ export function ProfilePage() {
     )
   }
 
-  if (!profile) return null
+  if (!profile || !profile.personal) return null
 
   return <ProfileEditor profile={profile} />
 }
@@ -307,8 +308,9 @@ function ProfileEditor({ profile }: { profile: StudentProfile }) {
                   const fieldKey = `${String(key)}.${field}`
                   const isModified = modifiedFields.has(fieldKey)
                   const displayLabel = field.replace(/([A-Z])/g, ' $1').replace(/^./, (c) => c.toUpperCase())
+                  const isReadonly = field === 'matricNumber'
 
-                  if (!isEditing) {
+                  if (!isEditing || isReadonly) {
                     return (
                       <div key={field} className="rounded-md border border-border p-3">
                         <p className="text-xs uppercase tracking-wide text-muted-foreground">{displayLabel}</p>

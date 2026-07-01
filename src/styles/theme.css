@@ -1,5 +1,19 @@
 @custom-variant dark (&:is(.dark *));
 
+/* ─── Landing Page Variables ───────────────────────────────── */
+:root {
+  --landing-navy: #00468e;
+  --landing-royal: #1a56db;
+  --landing-emerald: #10b981;
+  --landing-gold: #d4af37;
+  --landing-gold-light: #f0d060;
+  --landing-surface: #f0f4f8;
+  --landing-hero-bg: linear-gradient(135deg, #00214d 0%, #00468e 45%, #1a56db 100%);
+  --landing-card-glow: 0 0 0 1px rgba(26, 86, 219, 0.15), 0 8px 32px rgba(0, 70, 142, 0.12);
+  --landing-glass-bg: rgba(255, 255, 255, 0.08);
+  --landing-glass-border: rgba(255, 255, 255, 0.18);
+}
+
 :root {
   --background: #ffffff;
   --foreground: #0f172a;

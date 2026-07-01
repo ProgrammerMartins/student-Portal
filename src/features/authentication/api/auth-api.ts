@@ -55,3 +55,25 @@ export async function getProfile() {
   const { data } = await apiClient.get('/auth/profile')
   return data
 }
+
+export async function signup(credentials: {
+  email: string
+  password: string
+  firstName: string
+  lastName: string
+}) {
+  const { data } = await apiClient.post<BackendLoginResponse>('/auth/register', credentials)
+  const result: AuthResult = {
+    user: {
+      id: data.user.id,
+      email: data.user.email,
+      firstName: data.user.firstName,
+      lastName: data.user.lastName,
+      role: data.user.role,
+    },
+    accessToken: data.accessToken,
+    refreshToken: data.refreshToken,
+  }
+  localStorage.setItem(API_TOKEN_KEY, result.accessToken)
+  return result
+}

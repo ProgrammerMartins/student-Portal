@@ -219,7 +219,7 @@ export function RegisterWizard() {
     setShowSuccess(true)
 
     setTimeout(() => {
-      navigate('/dashboard', { replace: true })
+      navigate('/portal/dashboard', { replace: true })
     }, 1200)
   }
 

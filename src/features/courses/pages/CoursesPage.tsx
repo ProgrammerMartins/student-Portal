@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
-import { BookOpen, Search } from 'lucide-react'
+import { BookOpen, Plus, Search, Trash2, Download } from 'lucide-react'
 import { Input } from '@/shared/ui/input'
 import { Badge } from '@/shared/ui/badge'
+import { Button } from '@/shared/ui/button'
 import {
   Table,
   TableBody,
@@ -11,12 +12,18 @@ import {
   TableRow,
 } from '@/shared/ui/table'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
-import { useCourses } from '../hooks/use-courses'
+import { useCourses, useDeleteCourse } from '../hooks/use-courses'
+import { CreateCourseDialog } from '../components/CreateCourseDialog'
+import { useAuthStore } from '@/features/authentication/stores/auth-store'
+import { downloadCsv } from '@/shared/utils/export'
 
 export function CoursesPage() {
   const [query, setQuery] = useState('')
   const { data: coursesData, isLoading, isError } = useCourses()
+  const deleteCourse = useDeleteCourse()
   const courses = coursesData?.data ?? []
+  const userRole = useAuthStore((state) => state.user?.role)
+  const canCreate = userRole === 'super_admin' || userRole === 'admin'
 
   const filtered = useMemo(() => {
     const q = query.toLowerCase()
@@ -26,6 +33,18 @@ export function CoursesPage() {
         c.title.toLowerCase().includes(q),
     )
   }, [query, courses])
+
+  const handleExport = () => {
+    const exportData = filtered.map(c => ({
+      Code: c.code,
+      Title: c.title,
+      Credits: c.credits,
+      Level: c.level ?? 'N/A',
+      Department: c.department?.name ?? 'N/A',
+      'Department Code': c.department?.code ?? 'N/A'
+    }))
+    downloadCsv(exportData, 'courses_export')
+  }
 
   return (
     <div className="space-y-6">
@@ -40,15 +59,22 @@ export function CoursesPage() {
             <BookOpen className="h-5 w-5 text-primary" />
             Course List
           </CardTitle>
-          <div className="relative w-full sm:w-72">
-            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="Search courses..."
-              className="pl-9"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
+          <div className="flex flex-wrap items-center gap-3">
+            <Button variant="outline" size="sm" onClick={handleExport}>
+              <Download className="mr-2 h-4 w-4" />
+              Export CSV
+            </Button>
+            {canCreate && <CreateCourseDialog />}
+            <div className="relative w-full sm:w-72">
+              <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Search courses..."
+                className="pl-9"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -70,6 +96,7 @@ export function CoursesPage() {
                     <TableHead>Credits</TableHead>
                     <TableHead>Level</TableHead>
                     <TableHead>Department</TableHead>
+                    {canCreate && <TableHead className="w-[80px] text-right">Actions</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -82,11 +109,26 @@ export function CoursesPage() {
                       <TableCell>
                         <Badge variant="outline">{course.department?.code ?? '-'}</Badge>
                       </TableCell>
+                      {canCreate && (
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              if (confirm('Are you sure you want to delete this course?')) {
+                                deleteCourse.mutate(course.id)
+                              }
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))}
                   {filtered.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                      <TableCell colSpan={canCreate ? 6 : 5} className="h-24 text-center text-muted-foreground">
                         No courses found.
                       </TableCell>
                     </TableRow>

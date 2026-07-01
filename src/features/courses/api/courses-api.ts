@@ -30,3 +30,28 @@ export async function fetchCoursesByLevel(level: string) {
   const { data } = await apiClient.get<BackendCourse[]>(`/courses/level/${level}`)
   return data
 }
+
+export interface CreateCoursePayload {
+  title: string
+  code: string
+  credits: number
+  departmentId: string
+  programmeId?: string
+  description?: string
+  level?: string
+}
+
+export async function createCourse(payload: CreateCoursePayload) {
+  const { data } = await apiClient.post<BackendCourse>('/courses', payload)
+  return data
+}
+
+export async function updateCourse(id: string, payload: Partial<CreateCoursePayload>) {
+  const { data } = await apiClient.put<BackendCourse>(`/courses/${id}`, payload)
+  return data
+}
+
+export async function deleteCourse(id: string) {
+  const { data } = await apiClient.delete<{ message: string }>(`/courses/${id}`)
+  return data
+}

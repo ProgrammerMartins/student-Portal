@@ -1,4 +1,4 @@
-import { Loader2, GraduationCap } from 'lucide-react'
+import { Loader2, GraduationCap, Download } from 'lucide-react'
 import {
   Table,
   TableBody,
@@ -9,11 +9,25 @@ import {
 } from '@/shared/ui/table'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
 import { Badge } from '@/shared/ui/badge'
+import { Button } from '@/shared/ui/button'
 import { useResults } from '../hooks/use-results'
+import { downloadCsv } from '@/shared/utils/export'
 
 export function ResultsPage() {
   const { data: resultsData, isLoading, isError } = useResults()
   const results = resultsData?.data ?? []
+
+  const handleExport = () => {
+    const exportData = results.map(r => ({
+      Course: r.course?.code ?? 'N/A',
+      Title: r.course?.title ?? 'N/A',
+      Units: r.course?.credits ?? 0,
+      Semester: r.semester?.name ?? 'N/A',
+      Score: r.score ?? 'N/A',
+      Grade: r.grade ?? 'N/A'
+    }))
+    downloadCsv(exportData, 'results_export')
+  }
 
   if (isLoading) {
     return (
@@ -77,11 +91,17 @@ export function ResultsPage() {
       </div>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle className="flex items-center gap-2">
             <GraduationCap className="h-5 w-5 text-primary" />
             Result Slip
           </CardTitle>
+          {results.length > 0 && (
+            <Button variant="outline" size="sm" onClick={handleExport}>
+              <Download className="mr-2 h-4 w-4" />
+              Export CSV
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           {!results || results.length === 0 ? (
